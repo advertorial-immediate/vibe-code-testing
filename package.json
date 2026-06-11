@@ -1,0 +1,16 @@
+{
+  "name": "wc-predictions-pro",
+  "version": "2.0.0",
+  "description": "World Cup score predictions dashboard using API-Football, weather, form, injuries and predicted lineups.",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "@fastify/cors": "latest",
+    "dotenv": "latest",
+    "fastify": "latest",
+    "@fastify/static": "latest"
+  }
+}
