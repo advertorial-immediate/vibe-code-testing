@@ -312,9 +312,55 @@ function injuryPenalty(injuries, teamId) {
   return clamp(rows.length * 0.035, 0, 0.16);
 }
 
+const FIXTURE_VENUE_OVERRIDES = [
+  {
+    home: ['USA', 'United States'],
+    away: ['Paraguay'],
+    date: '2026-06-12',
+    city: 'Los Angeles',
+    venue: 'SoFi Stadium',
+    lat: 33.9535,
+    lon: -118.3392
+  }
+];
+
+function fixtureOverrideVenue(fixture) {
+  const home = normaliseTeamName(fixture?.teams?.home?.name || '');
+  const away = normaliseTeamName(fixture?.teams?.away?.name || '');
+  const date = String(fixture?.fixture?.date || '').slice(0, 10);
+
+  return FIXTURE_VENUE_OVERRIDES.find(row => {
+    const homeMatch = row.home.map(normaliseTeamName).includes(home);
+    const awayMatch = row.away.map(normaliseTeamName).includes(away);
+    return homeMatch && awayMatch && row.date === date;
+  }) || null;
+}
+
 function fixtureVenueCoords(fixture) {
+  const override = fixtureOverrideVenue(fixture);
+
+  if (override) {
+    return {
+      city: override.city,
+      venue: override.venue,
+      lat: override.lat,
+      lon: override.lon,
+      source: 'fixture override'
+    };
+  }
+
   const haystack = `${fixture?.fixture?.venue?.name || ''} ${fixture?.fixture?.venue?.city || ''}`.toLowerCase();
-  return VENUE_COORDS.find(v => v.match.some(term => haystack.includes(term))) || null;
+
+  const matched = VENUE_COORDS.find(v =>
+    v.match.some(term => haystack.includes(term))
+  );
+
+  if (!matched) return null;
+
+  return {
+    ...matched,
+    source: 'venue text match'
+  };
 }
 
 async function weatherForFixture(fixture) {
@@ -340,6 +386,8 @@ async function weatherForFixture(fixture) {
 
   const data = await response.json();
   data.resolvedVenue = coords;
+  data.resolvedCity = coords.city || fixture?.fixture?.venue?.city || null;
+  data.resolvedVenueName = coords.venue || fixture?.fixture?.venue?.name || null;
 
   setCached(url, data, MEDIUM_CACHE);
   return data;
