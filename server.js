@@ -106,8 +106,8 @@ function strengthForTeam(teamOrName) {
 const fifaScore = clamp((fifa - 1200) / 650, 0.45, 1.15);
 
 return clamp(
-  (localScore * 0.55) +
-  (fifaScore * 0.45),
+  (localScore * 0.35) +
+  (fifaScore * 0.65),
   0.55,
   1.2
 );
@@ -410,7 +410,7 @@ function teamModel({ teamName, teamId, opponentName, history, injuries, weather,
   clamp((formPts - 6) * 0.05, -0.25, 0.30);
   const attackAdj = clamp((goalProfile.scored - 1.25) * 0.18, -0.16, 0.24);
   const defenceAdj = clamp((1.2 - goalProfile.conceded) * 0.14, -0.18, 0.18);
-  const strengthAdj = clamp((strength - opponentStrength) * 0.9, -0.35, 0.35);
+  const strengthAdj = clamp((strength - opponentStrength) * 1.15, -0.45, 0.45);
   const hostAdj = HOST_TEAMS.has(normaliseTeamName(teamName)) ? 0.12 : 0;
   const normalHomeAdj = isHome ? 0.08 : 0;
   const weatherAdj = weatherAdjustment(teamName, weather || {});
