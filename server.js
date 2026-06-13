@@ -103,8 +103,14 @@ function strengthForTeam(teamOrName) {
   const local = TEAM_STRENGTH[name] || TEAM_STRENGTH[rawName] || 72;
   const fifa = FIFA_RANKING_POINTS[name] || FIFA_RANKING_POINTS[rawName] || 1400;
   const localScore = local / 100;
-  const fifaScore = clamp((fifa - 1200) / 650, 0.45, 1.15);
-  return clamp((localScore * 0.42) + (fifaScore * 0.58), 0.55, 1.2);
+const fifaScore = clamp((fifa - 1200) / 650, 0.45, 1.15);
+
+return clamp(
+  (localScore * 0.55) +
+  (fifaScore * 0.45),
+  0.55,
+  1.2
+);
 }
 
 function syntheticForm(teamOrName) {
@@ -309,7 +315,7 @@ function weatherAdjustment(teamName, weather = {}) {
 
 function injuryPenalty(injuries, teamId) {
   const rows = safeArray(injuries).filter(i => i.team?.id === Number(teamId));
-  return clamp(rows.length * 0.035, 0, 0.16);
+  return clamp(rows.length * 0.05, 0, 0.25);
 }
 
 const FIXTURE_VENUE_OVERRIDES = [
@@ -400,7 +406,8 @@ function teamModel({ teamName, teamId, opponentName, history, injuries, weather,
   const formPts = pointsFromForm(form);
   const goalProfile = goalsForTeam(history, teamId, teamName);
 
-  const formAdj = clamp((formPts - 6) * 0.035, -0.18, 0.22);
+  const formAdj =
+  clamp((formPts - 6) * 0.05, -0.25, 0.30);
   const attackAdj = clamp((goalProfile.scored - 1.25) * 0.18, -0.16, 0.24);
   const defenceAdj = clamp((1.2 - goalProfile.conceded) * 0.14, -0.18, 0.18);
   const strengthAdj = clamp((strength - opponentStrength) * 0.9, -0.35, 0.35);
@@ -417,16 +424,16 @@ function teamModel({ teamName, teamId, opponentName, history, injuries, weather,
       defenceAdj +
       hostAdj +
       normalHomeAdj +
-      weatherAdj.familiarity -
-      weatherAdj.severity -
+      weatherAdj.familiarity * 1.5 -
+      weatherAdj.severity * 1.25 -
       injAdj,
     0.2,
     4.2
   );
 
   const blendedXg = apiXg
-    ? clamp(localXg * 0.72 + apiXg * 0.28, 0.2, 4.2)
-    : localXg;
+  ? clamp(localXg * 0.80 + apiXg * 0.20, 0.2, 4.2)
+  : localXg;
 
   return {
     form,
