@@ -424,7 +424,7 @@ function renderBasicPrediction(f) {
 function matchSkeleton(f){return `<article class="match" id="fixture-${f.fixture.id}" onclick="selectMatch(${f.fixture.id})"><span class="group-tag">${groupOfTeam(f.teams.home)}</span><div class="score-row"><div class="team"><img class="flag" src="${flag(f.teams.home.name)}"><div><div class="team-name">${f.teams.home.name}</div><div class="form">${formLetters(f.teams.home).map(x=>`<i class="${x}">${x}</i>`).join('')}</div></div></div><div class="score"><div class="muted">${fmtTime(f.fixture.date)} · ${f.fixture.venue?.name||'Venue TBC'}</div><b id="score-${f.fixture.id}">–</b><br><span class="confidence" id="conf-${f.fixture.id}">Loading</span></div><div class="team away"><div><div class="team-name">${f.teams.away.name}</div><div class="form" style="justify-content:flex-end">${formLetters(f.teams.away).map(x=>`<i class="${x}">${x}</i>`).join('')}</div></div><img class="flag" src="${flag(f.teams.away.name)}"></div></div><div class="mini" id="mini-${f.fixture.id}"><div><span>Team form</span><div class="factor">Analysing</div></div><div><span>Weather</span><div class="factor">—</div></div></div><div class="lineup-cta" id="cta-${f.fixture.id}">View predicted lineups</div>
 <div class="inline-lineups" id="lineups-${f.fixture.id}"></div>
 </article>`}
-async function loadPack(f){const pack=await api(`/api/match-pack?fixture=${f.fixture.id}`);state.packs[f.fixture.id]=pack;const [h,a]=scoreFromPack(f,pack);const scoreEl=document.getElementById(`score-${f.fixture.id}`); if(!scoreEl)return; scoreEl.textContent=`${h} - ${a}`;document.getElementById(`conf-${f.fixture.id}`).textContent=`${confidence(f,pack)}% confidence`;const injuries=pack.injuries?.length||0;const homeForm=formLetters(f.teams.home,pack,'home');const awayForm=formLetters(f.teams.away,pack,'away');const source=pack.model?.source||'Prediction model';const xg=pack.model?.expectedGoals?`${pack.model.expectedGoals.home} - ${pack.model.expectedGoals.away}`:source;document.getElementById(`mini-${f.fixture.id}`).innerHTML=`<div><span>Expected goals (xG)</span><div class="factor">${xg}</div></div><div><span>Weather</span><div class="factor" id="weather-${f.fixture.id}">Checking</div></div></div>`;const homeFormEl=document.querySelector(`#fixture-${f.fixture.id} .team:not(.away) .form`);if(homeFormEl)homeFormEl.innerHTML=homeForm.map(x=>`<i class="${x}">${x}</i>`).join('');const awayFormEl=document.querySelector(`#fixture-${f.fixture.id} .team.away .form`);if(awayFormEl)awayFormEl.innerHTML=awayForm.map(x=>`<i class="${x}">${x}</i>`).join('');loadWeather(f); if(state.selected===f.fixture.id) renderSelected(f,pack)}
+async function loadPack(f){const pack=await api(`/api/match-pack?fixture=${f.fixture.id}`);state.packs[f.fixture.id]=pack;const [h,a]=scoreFromPack(f,pack);const scoreEl=document.getElementById(`score-${f.fixture.id}`); if(!scoreEl)return; scoreEl.textContent=`${h} - ${a}`;document.getElementById(`conf-${f.fixture.id}`).textContent=`${confidence(f,pack)}% confidence`;const injuries=pack.injuries?.length||0;const homeForm=formLetters(f.teams.home,pack,'home');const awayForm=formLetters(f.teams.away,pack,'away');const source=pack.model?.source||'Prediction model';const xg=pack.model?.expectedGoals?`${pack.model.expectedGoals.home} - ${pack.model.expectedGoals.away}`:source;document.getElementById(`mini-${f.fixture.id}`).innerHTML=`<div><span>Expected goals (xG)</span><div class="factor">${xg}</div></div><div><span>Weather</span><div class="factor" id="weather-${f.fixture.id}">Checking</div></div></div>`;const homeFormEl=document.querySelector(`#fixture-${f.fixture.id} .team:not(.away) .form`);if(homeFormEl)homeFormEl.innerHTML=homeForm.map(x=>`<i class="${x}">${x}</i>`).join('');const awayFormEl=document.querySelector(`#fixture-${f.fixture.id} .team.away .form`);if(awayFormEl)awayFormEl.innerHTML=awayForm.map(x=>`<i class="${x}">${x}</i>`).join('');loadWeather(f, pack); if(state.selected===f.fixture.id) renderSelected(f,pack)}
 function renderPackWeather(f, pack) {
   const el = document.getElementById(`weather-${f.fixture.id}`);
   if (!el) return;
@@ -450,9 +450,81 @@ function renderPackWeather(f, pack) {
     return;
   }
 
-  loadWeather(f);
+  loadWeather(f, pack);
 }
-async function loadWeather(f){const el=document.getElementById(`weather-${f.fixture.id}`); if(!el)return; const v=f.fixture.venue;if(!v?.city){el.textContent='Venue TBC';return}const coords={"Mexico City":[19.4326,-99.1332],"New York":[40.7128,-74.0060],"Vancouver":[49.2827,-123.1207],"Los Angeles":[34.0522,-118.2437],"Toronto":[43.6532,-79.3832],"Miami":[25.7617,-80.1918],"Dallas":[32.7767,-96.7970],"Houston":[29.7604,-95.3698],"Seattle":[47.6062,-122.3321],"Kansas City":[39.0997,-94.5786],"Boston":[42.3601,-71.0589],"Philadelphia":[39.9526,-75.1652],"Atlanta":[33.7490,-84.3880],"San Francisco":[37.7749,-122.4194],"Guadalajara":[20.6597,-103.3496],"Monterrey":[25.6866,-100.3161],"Akron":[41.0814,-81.5190]};const c=coords[v.city]||coords[Object.keys(coords).find(k=>v.city.includes(k))];if(!c){el.textContent='City TBC';return}try{const w=await api(`/api/weather?lat=${c[0]}&lon=${c[1]}&date=${f.fixture.date.slice(0,10)}`);const max=w.daily?.temperature_2m_max?.[0];const pp=w.daily?.precipitation_probability_max?.[0];el.textContent=max?`${Math.round(max)}°C · ${pp||0}% rain`:'Weather ready'}catch{el.textContent='Unavailable'}}
+async function loadWeather(f, pack = null) {
+  const el = document.getElementById(`weather-${f.fixture.id}`);
+  if (!el) return;
+
+  const packWeather = pack?.weather;
+
+  const packCity =
+    packWeather?.resolvedCity ||
+    packWeather?.resolvedVenue?.city ||
+    packWeather?.resolvedVenueName;
+
+  const packMax = packWeather?.daily?.temperature_2m_max?.[0];
+  const packRain = packWeather?.daily?.precipitation_probability_max?.[0];
+
+  if (packMax !== undefined && packMax !== null) {
+    el.textContent = `${packCity || 'Venue'} · ${Math.round(packMax)}°C · ${packRain || 0}% rain`;
+    return;
+  }
+
+  const v = f.fixture.venue || {};
+
+  const fallbackCities = {
+    'USA-Paraguay': 'Los Angeles',
+    'United States-Paraguay': 'Los Angeles'
+  };
+
+  const fixtureKey = `${f.teams.home.name}-${f.teams.away.name}`;
+  const city = packCity || fallbackCities[fixtureKey] || v.city;
+
+  const coords = {
+    'Mexico City': [19.4326, -99.1332],
+    'New York': [40.7128, -74.0060],
+    'Vancouver': [49.2827, -123.1207],
+    'Los Angeles': [34.0522, -118.2437],
+    'Toronto': [43.6532, -79.3832],
+    'Miami': [25.7617, -80.1918],
+    'Dallas': [32.7767, -96.7970],
+    'Houston': [29.7604, -95.3698],
+    'Seattle': [47.6062, -122.3321],
+    'Kansas City': [39.0997, -94.5786],
+    'Boston': [42.3601, -71.0589],
+    'Philadelphia': [39.9526, -75.1652],
+    'Atlanta': [33.7490, -84.3880],
+    'San Francisco': [37.7749, -122.4194],
+    'Guadalajara': [20.6597, -103.3496],
+    'Monterrey': [25.6866, -100.3161],
+    'Akron': [41.0814, -81.5190]
+  };
+
+  const matchedCity = Object.keys(coords).find(k =>
+    String(city || '').includes(k)
+  );
+
+  const c = coords[city] || coords[matchedCity];
+
+  if (!c) {
+    el.textContent = city && city !== 'City TBC' ? city : 'Venue TBC';
+    return;
+  }
+
+  try {
+    const w = await api(`/api/weather?lat=${c[0]}&lon=${c[1]}&date=${f.fixture.date.slice(0,10)}`);
+    const max = w.daily?.temperature_2m_max?.[0];
+    const pp = w.daily?.precipitation_probability_max?.[0];
+
+    el.textContent =
+      max !== undefined && max !== null
+        ? `${city} · ${Math.round(max)}°C · ${pp || 0}% rain`
+        : `${city} · Weather ready`;
+  } catch {
+    el.textContent = `${city || 'Venue'} · Weather unavailable`;
+  }
+}
 function motivation(f){const g=state.standings.find(rows=>rows.some(r=>r.team.id===f.teams.home.id||r.team.id===f.teams.away.id)); if(!g) return 'Important match'; const h=g.find(r=>r.team.id===f.teams.home.id), a=g.find(r=>r.team.id===f.teams.away.id); if((h?.rank<=2)!==(a?.rank<=2)) return 'Qualification pressure'; return 'Group points vital'}
 function renderStandings(limit=2){const groups=flattenGroups();if(!groups.length){els.standings.textContent='Standings unavailable until API-Football publishes group data.';return}els.standings.innerHTML=groups.slice(0,limit).map(g=>`<h4>${g.name}</h4><div class="stand-row muted"><span></span><span>Team</span><span>P</span><span>GD</span><span>Pts</span></div>${g.rows.map(r=>`<div class="stand-row"><span>${r.rank}</span><span><img class="smallflag" src="${flag(r.team.name)}"> ${r.team.name}</span><span>${r.all?.played||0}</span><span>${r.goalsDiff||0}</span><b>${r.points||0}</b></div>`).join('')}`).join('')}
 window.selectMatch = async function(id) {
