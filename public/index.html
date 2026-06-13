@@ -187,7 +187,7 @@
     <div class="brand"><span class="cup">🏆</span><span>WORLD CUP<br><b>2026</b></span></div>
     <div class="nav"><!--<button class="active" data-view="dashboard">⚽ Dashboard</button>--><button class="active" data-view="today">📅 Today's Matches</button><button data-view="groups">🏁 Groups</button><button data-view="teams">👥 Teams</button><!--<button data-view="stats">📊 Stats & Insights</button>--></div>
     <div class="filter">
-      <label>Select date</label><div class="date-picker" onclick="openDatePicker()">
+      <label>Select date</label><div class="date-picker" onclick="openDatePicker('dateInput2')">
   <input id="dateInput2" type="date" />
 </div>
       <div id="groupButtons" class="groups"><button class="active" data-group="all">All</button></div>
@@ -823,6 +823,20 @@ els.date.addEventListener('change', () => {
   }, 300);
 });
 
+const dateInput2 = document.getElementById('dateInput2');
+
+if (dateInput2) {
+  dateInput2.addEventListener('change', () => {
+    els.date.value = dateInput2.value;
+    state.date = dateInput2.value;
+
+    state.view = 'today';
+    setActiveNav('today');
+
+    loadFixtures('Predictions');
+  });
+}
+
 const menuToggle = document.getElementById('menuToggle');
 const sideOverlay = document.getElementById('sideOverlay');
 const sidePanel = document.querySelector('.side');
@@ -890,8 +904,10 @@ init();
 </script>
 
 <script>
-function openDatePicker() {
-  const input = document.getElementById('dateInput');
+function openDatePicker(inputId = 'dateInput') {
+  const input = document.getElementById(inputId);
+
+  if (!input) return;
 
   if (input.showPicker) {
     input.showPicker();
