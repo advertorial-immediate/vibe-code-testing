@@ -237,7 +237,46 @@ function fmtDate(s){return new Date(s).toLocaleDateString([], {weekday:'short',d
 function pct(n){return Math.max(1,Math.min(99,Math.round(n)))}
 function formLetters(team,pack,side){const modelForm=side&&pack?.model?.form?.[side]; if(modelForm&&modelForm!=='TBC') return modelForm.slice(-5).split(''); const all=state.standings.flat();const r=all.find(x=>x.team?.id===team?.id||x.team?.name===team?.name);let f=(r?.form||'').slice(-5).split('').filter(Boolean);return f.length?f:['?','?','?','?','?']}
 function scoreFromPack(f,pack){if(pack?.model?.score) return [pack.model.score.home,pack.model.score.away]; const p=pack?.prediction?.predictions; if(p?.goals?.home&&p?.goals?.away) return [Number.parseInt(p.goals.home)||1,Number.parseInt(p.goals.away)||1]; const homeRank=rankOf(f.teams.home), awayRank=rankOf(f.teams.away); const diff=(awayRank-homeRank)/18; const h=Math.max(0,Math.round(1.25+diff)); const a=Math.max(0,Math.round(1.05-diff)); return [h,a]}
-function rankOf(t){const r=state.standings.flat().find(x=>x.team?.id===t?.id);return r?.rank||12}
+function rankOf(t){const r=state.standings.flat().find(x=>x.team?.id===t?.id);return r?.rank||12}function isFinishedFixture(f) {
+  const status = f?.fixture?.status?.short;
+
+  return [
+    'FT',   // Full Time
+    'AET',  // After Extra Time
+    'PEN'   // Penalties
+  ].includes(status);
+}
+function predictionOutcome(
+  predictedHome,
+  predictedAway,
+  actualHome,
+  actualAway
+) {
+  if (
+    predictedHome === actualHome &&
+    predictedAway === actualAway
+  ) {
+    return '✅ Exact prediction';
+  }
+
+  const predictedResult =
+    predictedHome > predictedAway
+      ? 'H'
+      : predictedHome < predictedAway
+      ? 'A'
+      : 'D';
+
+  const actualResult =
+    actualHome > actualAway
+      ? 'H'
+      : actualHome < actualAway
+      ? 'A'
+      : 'D';
+
+  return predictedResult === actualResult
+    ? '✓ Correct result'
+    : '❌ Incorrect';
+}
 function confidence(f,pack){const mp=pack?.model?.percent; if(mp) return Math.max(mp.home||0,mp.draw||0,mp.away||0); const p=pack?.prediction?.predictions?.percent; if(p){return Math.max(parseInt(p.home)||0,parseInt(p.draw)||0,parseInt(p.away)||0)} const d=Math.abs(rankOf(f.teams.home)-rankOf(f.teams.away));return pct(54+d*2)}
 function groupOfTeam(t){for(const g of state.standings){if(g.some(r=>r.team?.id===t?.id)) return g[0]?.group || 'Group'} return 'Group'}
 function flattenGroups(){return state.standings.map((g,i)=>({name:g[0]?.group||`Group ${String.fromCharCode(65+i)}`,rows:g}))}
@@ -424,7 +463,61 @@ function renderBasicPrediction(f) {
 function matchSkeleton(f){return `<article class="match" id="fixture-${f.fixture.id}" onclick="selectMatch(${f.fixture.id})"><span class="group-tag">${groupOfTeam(f.teams.home)}</span><div class="score-row"><div class="team"><img class="flag" src="${flag(f.teams.home.name)}"><div><div class="team-name">${f.teams.home.name}</div><div class="form">${formLetters(f.teams.home).map(x=>`<i class="${x}">${x}</i>`).join('')}</div></div></div><div class="score"><div class="muted">${fmtTime(f.fixture.date)} · ${f.fixture.venue?.name||'Venue TBC'}</div><b id="score-${f.fixture.id}">–</b><br><span class="confidence" id="conf-${f.fixture.id}">Loading</span></div><div class="team away"><div><div class="team-name">${f.teams.away.name}</div><div class="form" style="justify-content:flex-end">${formLetters(f.teams.away).map(x=>`<i class="${x}">${x}</i>`).join('')}</div></div><img class="flag" src="${flag(f.teams.away.name)}"></div></div><div class="mini" id="mini-${f.fixture.id}"><div><span>Team form</span><div class="factor">Analysing</div></div><div><span>Weather</span><div class="factor">—</div></div></div><div class="lineup-cta" id="cta-${f.fixture.id}">View predicted lineups</div>
 <div class="inline-lineups" id="lineups-${f.fixture.id}"></div>
 </article>`}
-async function loadPack(f){const pack=await api(`/api/match-pack?fixture=${f.fixture.id}`);state.packs[f.fixture.id]=pack;const [h,a]=scoreFromPack(f,pack);const scoreEl=document.getElementById(`score-${f.fixture.id}`); if(!scoreEl)return; scoreEl.textContent=`${h} - ${a}`;document.getElementById(`conf-${f.fixture.id}`).textContent=`${confidence(f,pack)}% confidence`;const injuries=pack.injuries?.length||0;const homeForm=formLetters(f.teams.home,pack,'home');const awayForm=formLetters(f.teams.away,pack,'away');const source=pack.model?.source||'Prediction model';const xg=pack.model?.expectedGoals?`${pack.model.expectedGoals.home} - ${pack.model.expectedGoals.away}`:source;document.getElementById(`mini-${f.fixture.id}`).innerHTML=`<div><span>Expected goals (xG)</span><div class="factor">${xg}</div></div><div><span>Weather</span><div class="factor" id="weather-${f.fixture.id}">Checking</div></div></div>`;const homeFormEl=document.querySelector(`#fixture-${f.fixture.id} .team:not(.away) .form`);if(homeFormEl)homeFormEl.innerHTML=homeForm.map(x=>`<i class="${x}">${x}</i>`).join('');const awayFormEl=document.querySelector(`#fixture-${f.fixture.id} .team.away .form`);if(awayFormEl)awayFormEl.innerHTML=awayForm.map(x=>`<i class="${x}">${x}</i>`).join('');loadWeather(f, pack); if(state.selected===f.fixture.id) renderSelected(f,pack)}
+async function loadPack(f){const pack=await api(`/api/match-pack?fixture=${f.fixture.id}`);state.packs[f.fixture.id]=pack;const [h,a]=scoreFromPack(f,pack);const predictedHome = h;
+const predictedAway = a;const scoreEl=document.getElementById(`score-${f.fixture.id}`); if(!scoreEl)return; const finished = isFinishedFixture(f);
+
+const actualHome = f.goals?.home;
+const actualAway = f.goals?.away;
+
+let predictionSummary = '';
+
+if (finished) {
+  predictionSummary = `
+    <div>
+      <span>Prediction</span>
+      <div class="factor">
+        ${predictedHome}-${predictedAway}
+        ${predictionOutcome(
+          predictedHome,
+          predictedAway,
+          actualHome,
+          actualAway
+        )}
+      </div>
+    </div>
+  `;
+}
+
+scoreEl.textContent = finished
+  ? `${actualHome} - ${actualAway}`
+  : `${predictedHome} - ${predictedAway}`;const confEl =
+  document.getElementById(`conf-${f.fixture.id}`);
+
+if (finished) {
+  confEl.textContent = 'Actual score';
+}
+else {
+  confEl.textContent =
+    `${confidence(f,pack)}% confidence`;
+}const injuries=pack.injuries?.length||0;const homeForm=formLetters(f.teams.home,pack,'home');const awayForm=formLetters(f.teams.away,pack,'away');const source=pack.model?.source||'Prediction model';const xg=pack.model?.expectedGoals?`${pack.model.expectedGoals.home} - ${pack.model.expectedGoals.away}`:source;
+
+document.getElementById(`mini-${f.fixture.id}`).innerHTML=`
+  <div>
+    <span>Expected goals (xG)</span>
+    <div class="factor">${xg}</div>
+  </div>
+
+  <div>
+    <span>Weather</span>
+    <div class="factor" id="weather-${f.fixture.id}">
+      Checking
+    </div>
+  </div>
+
+  ${predictionSummary}
+`;
+
+const homeFormEl=document.querySelector(`#fixture-${f.fixture.id} .team:not(.away) .form`);if(homeFormEl)homeFormEl.innerHTML=homeForm.map(x=>`<i class="${x}">${x}</i>`).join('');const awayFormEl=document.querySelector(`#fixture-${f.fixture.id} .team.away .form`);if(awayFormEl)awayFormEl.innerHTML=awayForm.map(x=>`<i class="${x}">${x}</i>`).join('');loadWeather(f, pack); if(state.selected===f.fixture.id) renderSelected(f,pack)}
 function renderPackWeather(f, pack) {
   const el = document.getElementById(`weather-${f.fixture.id}`);
   if (!el) return;
