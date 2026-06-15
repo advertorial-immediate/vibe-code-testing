@@ -591,7 +591,7 @@ function derivedPrediction(fixture, prediction, homeHistory, awayHistory, injuri
 async function latestLineupForTeam(teamId) {
   const fixtures = await apiFootball(
     'fixtures',
-    { team: teamId, last: 8 },
+    { team: teamId, last: 4 },
     DAY_CACHE
   );
 
@@ -739,6 +739,10 @@ app.get('/api/weather', async (req) => {
   return data;
 });
 
+function isFutureFixture(fixture) {
+  return fixture?.fixture?.status?.short === 'NS';
+}
+
 app.get('/api/match-pack', async (req) => {
   const fixtureId = req.query.fixture;
   const fixtureResult = await apiFootball('fixtures', { id: fixtureId }, 1000 * 60 * 10);
@@ -800,11 +804,16 @@ app.get('/api/match-pack', async (req) => {
       DAY_CACHE
     ),
 
-    latestLineupForTeam(homeId),
-    latestLineupForTeam(awayId),
+    isFutureFixture(fixture)
+  ? Promise.resolve(null)
+  : latestLineupForTeam(homeId),
 
-    squadEstimate(homeId, fixture.teams.home.name),
-    squadEstimate(awayId, fixture.teams.away.name),
+isFutureFixture(fixture)
+  ? Promise.resolve(null)
+  : latestLineupForTeam(awayId),
+
+squadEstimate(homeId, fixture.teams.home.name),
+squadEstimate(awayId, fixture.teams.away.name),
 
     weatherForFixture(fixture)
   ]);

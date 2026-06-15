@@ -685,7 +685,12 @@ window.selectMatch = async function(id) {
 
   if (!state.packs[id]) {
     if (target) {
-      target.innerHTML = '<div class="loader">Loading predicted lineups…</div>';
+      target.innerHTML = `
+  <div class="loader">
+    Loading predicted lineups…<br>
+    <span class="muted">Using latest available lineups or squad fallback.</span>
+  </div>
+`;
     }
 
     try {
@@ -700,6 +705,14 @@ window.selectMatch = async function(id) {
   }
 
   renderSelected(f, state.packs[id]);
+  if (!document.getElementById(`lineups-${id}`).innerHTML.trim()) {
+  document.getElementById(`lineups-${id}`).innerHTML = `
+    <div class="loader">
+      Predicted lineups unavailable.<br>
+      <span class="muted">Showing squad estimates where possible.</span>
+    </div>
+  `;
+}
 };
 function renderSelected(f,pack){if(!f)return; const injuries=pack?.injuries||[];els.news.innerHTML=injuries.length?injuries.slice(0,8).map(i=>`<div class="news-row"><img class="smallflag" src="${flag(i.team?.name||'')}" onerror="this.style.display='none'"><div><b>${i.player?.name||'Player'}</b><br><span class="muted">${i.reason||i.player?.type||'Team news'}</span></div><b style="color:var(--red)">Out</b></div>`).join(''):'No API injury alerts for this fixture yet.';renderLineups(f,pack);renderInsights(f,pack)}
 function renderInsights(f,pack){const [h,a]=scoreFromPack(f,pack);const pc=pack?.model?.percent;const probs=pc?`${f.teams.home.name} ${pc.home}% · Draw ${pc.draw}% · ${f.teams.away.name} ${pc.away}%`:'API probabilities unavailable';els.insights.innerHTML=`<div class="insight"><div class="icon">🎯</div><div><b>Predicted result</b><br><span class="muted">${f.teams.home.name} ${h}-${a} ${f.teams.away.name}</span></div></div><div class="insight"><div class="icon">📊</div><div><b>Win probabilities</b><br><span class="muted">${probs}</span></div></div><div class="insight"><div class="icon">🩺</div><div><b>Team-news impact</b><br><span class="muted">${pack?.injuries?.length||0} injury/suspension records found.</span></div></div><div class="insight"><div class="icon">🏆</div><div><b>Motivation</b><br><span class="muted">${motivation(f)}.</span></div></div>`}
@@ -713,7 +726,10 @@ function renderLineups(f, pack) {
   if (!home || !away) {
     source = 'Estimated from latest available lineup/squad data';
     home = home || estimateLineup(f.teams.home);
-    away = away || estimateLineup(f.teams.away);
+away = away || estimateLineup(f.teams.away);
+
+home.team = home.team || f.teams.home;
+away.team = away.team || f.teams.away;
   } else if (home.estimated || away.estimated || home.sourceFixture || away.sourceFixture) {
     source = 'Estimated from latest available lineup/squad data';
   }
