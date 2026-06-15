@@ -965,6 +965,11 @@ els.date.addEventListener('change', () => {
   closeMenu({ scroll: true });
 
   state.view = 'today';
+  state.team = '';
+  state.group = 'all';
+
+  els.team.value = '';
+  setGroupButton('all');
   setActiveNav('today');
 
   setTimeout(() => {
@@ -980,6 +985,11 @@ if (dateInput2) {
     state.date = dateInput2.value;
 
     state.view = 'today';
+    state.team = '';
+    state.group = 'all';
+
+    els.team.value = '';
+    setGroupButton('all');
     setActiveNav('today');
 
     loadFixtures('Predictions');
