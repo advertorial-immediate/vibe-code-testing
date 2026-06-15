@@ -419,15 +419,8 @@ function filteredFixtures(source=state.fixtures){return source.filter(f=>state.g
 async function renderMatches(title){
   const list = filteredFixtures();
 
-  const selectedDate = new Date(state.date);
+  const isTeamView = Boolean(state.team);
 
-els.heading.textContent =
-  selectedDate.toLocaleDateString('en-GB', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric'
-  });
   els.status.textContent = `${list.length} fixture${list.length===1?'':'s'}`;
 
   if (!list.length) {
@@ -435,7 +428,46 @@ els.heading.textContent =
     return;
   }
 
-  els.matches.innerHTML = list.map(f => matchSkeleton(f)).join('');
+  if (!isTeamView) {
+    const selectedDate = new Date(state.date);
+
+    els.heading.textContent =
+      selectedDate.toLocaleDateString('en-GB', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric'
+      });
+
+    els.matches.innerHTML = list.map(f => matchSkeleton(f)).join('');
+  } else {
+    els.heading.textContent =
+      els.team.options[els.team.selectedIndex]?.text || 'Team fixtures';
+
+    const grouped = list.reduce((acc, f) => {
+      const dateKey = f.fixture.date.slice(0, 10);
+      if (!acc[dateKey]) acc[dateKey] = [];
+      acc[dateKey].push(f);
+      return acc;
+    }, {});
+
+    els.matches.innerHTML = Object.entries(grouped)
+      .sort(([a], [b]) => new Date(a) - new Date(b))
+      .map(([dateKey, fixtures]) => {
+        const label = new Date(dateKey).toLocaleDateString('en-GB', {
+          weekday: 'long',
+          day: 'numeric',
+          month: 'long',
+          year: 'numeric'
+        });
+
+        return `
+          <h2 style="margin:26px 0 14px">${label}</h2>
+          ${fixtures.map(f => matchSkeleton(f)).join('')}
+        `;
+      })
+      .join('');
+  }
 
   for (const f of list) {
     loadPack(f).catch(console.error);
