@@ -256,7 +256,7 @@ function predictionOutcome(
     predictedHome === actualHome &&
     predictedAway === actualAway
   ) {
-    return '✅ Exact prediction';
+    return '✅ Exact result';
   }
 
   const predictedResult =
@@ -274,8 +274,8 @@ function predictionOutcome(
       : 'D';
 
   return predictedResult === actualResult
-    ? ' ✓ Correct result'
-    : ' ❌ Incorrect';
+    ? ' ✓ Correct outcome'
+    : ' ❌ Incorrect outcome';
 }
 function confidence(f,pack){const mp=pack?.model?.percent; if(mp) return Math.max(mp.home||0,mp.draw||0,mp.away||0); const p=pack?.prediction?.predictions?.percent; if(p){return Math.max(parseInt(p.home)||0,parseInt(p.draw)||0,parseInt(p.away)||0)} const d=Math.abs(rankOf(f.teams.home)-rankOf(f.teams.away));return pct(54+d*2)}
 function groupOfTeam(t){for(const g of state.standings){if(g.some(r=>r.team?.id===t?.id)) return g[0]?.group || 'Group'} return 'Group'}
