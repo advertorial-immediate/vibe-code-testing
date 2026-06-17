@@ -739,6 +739,36 @@ app.get('/api/weather', async (req) => {
   return data;
 });
 
+function fixtureHasStarted(fixture) {
+  const status = fixture?.fixture?.status?.short;
+  return status && !['NS', 'TBD', 'PST'].includes(status);
+}
+
+function predictionSnapshotKey(fixture) {
+  return `prediction-snapshot:${fixture?.fixture?.id}`;
+}
+
+function getPredictionSnapshot(fixture) {
+  return cache.get(predictionSnapshotKey(fixture))?.value || null;
+}
+
+function savePredictionSnapshot(fixture, model) {
+  if (!fixture?.fixture?.id || !model) return model;
+
+  const snapshot = {
+    ...model,
+    snapshot: true,
+    snapshotAt: new Date().toISOString()
+  };
+
+  cache.set(predictionSnapshotKey(fixture), {
+    value: snapshot,
+    expires: Number.MAX_SAFE_INTEGER
+  });
+
+  return snapshot;
+}
+
 app.get('/api/match-pack', async (req) => {
   const fixtureId = req.query.fixture;
   const fixtureResult = await apiFootball('fixtures', { id: fixtureId }, 1000 * 60 * 10);
@@ -856,7 +886,14 @@ app.get('/api/match-pack', async (req) => {
   const awayHistory = safeArray(awayHistRaw.value?.response);
   const weather = weatherRaw.status === 'fulfilled' ? weatherRaw.value : null;
 
-  const model = derivedPrediction(
+  const existingSnapshot = getPredictionSnapshot(fixture);
+
+let model;
+
+if (existingSnapshot) {
+  model = existingSnapshot;
+} else {
+  model = derivedPrediction(
     fixture,
     prediction,
     homeHistory,
@@ -864,6 +901,9 @@ app.get('/api/match-pack', async (req) => {
     uniqueInjuries,
     weather || {}
   );
+
+  model = savePredictionSnapshot(fixture, model);
+}
 
   return {
     fixture,
