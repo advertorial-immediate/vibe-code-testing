@@ -786,26 +786,6 @@ away.team = away.team || f.teams.away;
     [50,18]
   ],
 
-  '5-2-3': [
-    [50,92],
-
-    [10,72],[30,73],[50,75],[70,73],[90,72],
-
-    [40,48],[60,48],
-
-    [22,22],[50,16],[78,22]
-  ],
-
-  '3-4-3': [
-    [50,92],
-
-    [30,72],[50,74],[70,72],
-
-    [18,50],[40,50],[60,50],[82,50],
-
-    [22,22],[50,16],[78,22]
-  ],
-
   '4-1-4-1': [
   [50,92],
   [18,72],[39,73],[61,73],[82,72],
@@ -835,6 +815,10 @@ away.team = away.team || f.teams.away;
   [22,22],[50,16],[78,22]
 ]
 };
+
+function mirrorFormationPositions(positions) {
+  return positions.map(([x, y]) => [100 - x, y]);
+}
 
 const teamColours = {
   'Mexico':'#006847',
@@ -927,7 +911,10 @@ function estimateLineup(team){
 function pitch(l,side){
   const players = (l.startXI || []).slice(0,11);
   const formation = l.formation || '4-2-3-1';
-  const positions = formationPositions[formation] || formationPositions['4-2-3-1'];
+  const basePositions =
+  formationPositions[formation] || formationPositions['4-2-3-1'];
+
+const positions = mirrorFormationPositions(basePositions);
   const shirtColour =
   teamColours[l.team?.name] || '#32d64d';
 
